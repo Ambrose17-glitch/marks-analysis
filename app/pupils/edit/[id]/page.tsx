@@ -11,12 +11,14 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { usePupilData, type Pupil, type Subject } from "@/lib/pupil-data-provider"
 import { useToast } from "@/components/ui/use-toast"
+import { LoadingSpinner } from "@/components/loading-spinner"
 
 export default function EditPupilPage() {
   const router = useRouter()
   const params = useParams()
-  const { pupils, updatePupil, getGrade } = usePupilData()
+  const { pupils, updatePupil, loading } = usePupilData()
   const { toast } = useToast()
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const pupilId = params.id as string
   const pupil = pupils.find((p) => p.id === pupilId)
@@ -53,7 +55,7 @@ export default function EditPupilPage() {
       })
 
       setMarks(initialMarks)
-    } else {
+    } else if (!loading) {
       // Pupil not found, redirect back to pupils list
       toast({
         title: "Error",
@@ -62,7 +64,7 @@ export default function EditPupilPage() {
       })
       router.push("/pupils")
     }
-  }, [pupil, router, toast])
+  }, [pupil, router, toast, loading])
 
   const handleMarksChange = (subject: Subject, value: string) => {
     const numValue = Number.parseInt(value, 10)
@@ -87,7 +89,7 @@ export default function EditPupilPage() {
     }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!name.trim()) {
@@ -108,35 +110,60 @@ export default function EditPupilPage() {
       return
     }
 
-    // Convert marks to the required format
-    const formattedMarks = Object.entries(marks).map(([subject, data]) => {
-      const { grade, points } = getGrade(data.marks)
-      return {
-        subject: subject as Subject,
-        marks: data.marks,
-        grade,
-        points,
-        teacherName: data.teacherName || undefined,
-      }
-    })
+    setIsSubmitting(true)
 
-    // Update the pupil
-    updatePupil(pupilId, {
-      name,
-      class: className as Pupil["class"],
-      marks: formattedMarks,
-    })
+    try {
+      // Convert marks to the required format
+      const formattedMarks = Object.entries(marks).map(([subject, data]) => {
+        return {
+          subject: subject as Subject,
+          marks: data.marks,
+          teacherName: data.teacherName || undefined,
+        }
+      })
 
-    toast({
-      title: "Success",
-      description: `${name}'s information has been updated`,
-    })
+      // Update the pupil
+      await updatePupil(pupilId, {
+        name,
+        class: className as Pupil["class"],
+        marks: formattedMarks,
+      })
 
-    router.push("/pupils")
+      router.push("/pupils")
+    } catch (error) {
+      console.error("Error updating pupil:", error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  if (!pupil) {
-    return <div className="container py-8">Loading...</div>
+  if (loading && !isSubmitting) {
+    return (
+      <div className="container py-8">
+        <h1 className="text-3xl font-bold mb-6">Edit Pupil</h1>
+        <Card>
+          <CardContent className="py-10">
+            <LoadingSpinner />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!pupil && !loading) {
+    return (
+      <div className="container py-8">
+        <h1 className="text-3xl font-bold mb-6">Edit Pupil</h1>
+        <Card>
+          <CardContent className="py-10 text-center">
+            <p className="text-muted-foreground">Pupil not found</p>
+            <Button className="mt-4" onClick={() => router.push("/pupils")}>
+              Back to Pupils
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -159,12 +186,13 @@ export default function EditPupilPage() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Enter full name"
                   required
+                  disabled={isSubmitting}
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="class">Class</Label>
-                <Select value={className} onValueChange={setClassName}>
+                <Select value={className} onValueChange={setClassName} disabled={isSubmitting}>
                   <SelectTrigger id="class">
                     <SelectValue placeholder="Select class" />
                   </SelectTrigger>
@@ -200,6 +228,7 @@ export default function EditPupilPage() {
                         max="100"
                         value={marks[subject].marks}
                         onChange={(e) => handleMarksChange(subject, e.target.value)}
+                        disabled={isSubmitting}
                       />
                     </div>
 
@@ -210,6 +239,7 @@ export default function EditPupilPage() {
                         value={marks[subject].teacherName}
                         onChange={(e) => handleTeacherChange(subject, e.target.value)}
                         placeholder="Enter teacher name"
+                        disabled={isSubmitting}
                       />
                     </div>
                   </div>
@@ -218,10 +248,19 @@ export default function EditPupilPage() {
             </div>
           </CardContent>
           <CardFooter className="flex justify-between">
-            <Button type="button" variant="outline" onClick={() => router.back()}>
+            <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit">Update Pupil</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <LoadingSpinner className="mr-2 h-4 w-4" />
+                  Updating...
+                </>
+              ) : (
+                "Update Pupil"
+              )}
+            </Button>
           </CardFooter>
         </Card>
       </form>

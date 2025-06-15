@@ -8,11 +8,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input"
 import { usePupilData, type Subject } from "@/lib/pupil-data-provider"
 import { useToast } from "@/components/ui/use-toast"
+import { LoadingSpinner } from "@/components/loading-spinner"
+import { RefreshCw } from "lucide-react"
 
 export default function MarksEntryPage() {
-  const { pupils, updatePupil, getGrade } = usePupilData()
+  const { pupils, updatePupil, getGrade, loading, refreshPupils } = usePupilData()
   const [selectedClass, setSelectedClass] = useState<string>("")
   const { toast } = useToast()
+  const [isSaving, setIsSaving] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [marksState, setMarksState] = useState<Record<string, Record<Subject, number>>>({})
 
   const classPupils = selectedClass ? pupils.filter((pupil) => pupil.class === selectedClass) : []
 
@@ -20,34 +25,22 @@ export default function MarksEntryPage() {
     const numValue = Number.parseInt(value, 10)
     const validValue = isNaN(numValue) ? 0 : Math.min(100, Math.max(0, numValue))
 
-    const pupil = pupils.find((p) => p.id === pupilId)
-    if (!pupil) return
-
-    const { grade, points } = getGrade(validValue)
-
-    const updatedMarks = [...pupil.marks]
-    const markIndex = updatedMarks.findIndex((m) => m.subject === subject)
-
-    if (markIndex >= 0) {
-      updatedMarks[markIndex] = {
-        ...updatedMarks[markIndex],
-        marks: validValue,
-        grade,
-        points,
-      }
-    } else {
-      updatedMarks.push({
-        subject,
-        marks: validValue,
-        grade,
-        points,
-      })
-    }
-
-    updatePupil(pupilId, { marks: updatedMarks })
+    setMarksState((prev) => ({
+      ...prev,
+      [pupilId]: {
+        ...(prev[pupilId] || {}),
+        [subject]: validValue,
+      },
+    }))
   }
 
   const getSubjectMark = (pupilId: string, subject: Subject) => {
+    // First check if we have a value in the state
+    if (marksState[pupilId]?.[subject] !== undefined) {
+      return marksState[pupilId][subject].toString()
+    }
+
+    // Otherwise get from the pupil data
     const pupil = pupils.find((p) => p.id === pupilId)
     if (!pupil) return ""
 
@@ -55,16 +48,82 @@ export default function MarksEntryPage() {
     return mark ? mark.marks.toString() : ""
   }
 
-  const handleSaveMarks = () => {
+  const handleSaveMarks = async () => {
+    if (!selectedClass || Object.keys(marksState).length === 0) {
+      toast({
+        title: "No changes",
+        description: "No marks have been changed to save.",
+      })
+      return
+    }
+
+    setIsSaving(true)
+
+    try {
+      // For each pupil with changed marks
+      for (const [pupilId, subjectMarks] of Object.entries(marksState)) {
+        const pupil = pupils.find((p) => p.id === pupilId)
+        if (!pupil) continue
+
+        // Get existing marks to preserve teacher names
+        const existingMarks = pupil.marks.reduce(
+          (acc, mark) => {
+            acc[mark.subject] = mark.teacherName || ""
+            return acc
+          },
+          {} as Record<Subject, string>,
+        )
+
+        // Prepare marks for update
+        const marksToUpdate = Object.entries(subjectMarks).map(([subject, marks]) => ({
+          subject: subject as Subject,
+          marks,
+          teacherName: existingMarks[subject as Subject] || undefined,
+        }))
+
+        // Update the pupil
+        await updatePupil(pupilId, { marks: marksToUpdate })
+      }
+
+      // Clear the marks state after saving
+      setMarksState({})
+
+      toast({
+        title: "Marks Saved",
+        description: `Marks for ${selectedClass} have been saved successfully.`,
+      })
+    } catch (error) {
+      console.error("Error saving marks:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save marks. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    await refreshPupils()
+    setMarksState({}) // Clear local state
+    setIsRefreshing(false)
     toast({
-      title: "Marks Saved",
-      description: `Marks for ${selectedClass} have been saved successfully.`,
+      title: "Data refreshed",
+      description: "The pupil data has been refreshed from the database.",
     })
   }
 
   return (
     <div className="container py-8">
-      <h1 className="text-3xl font-bold mb-6">Marks Entry</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Marks Entry</h1>
+        <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
+          <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+          Refresh Data
+        </Button>
+      </div>
 
       <Card>
         <CardHeader>
@@ -86,7 +145,9 @@ export default function MarksEntryPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {selectedClass ? (
+          {loading ? (
+            <LoadingSpinner className="py-8" />
+          ) : selectedClass ? (
             classPupils.length > 0 ? (
               <>
                 <Table>
@@ -112,6 +173,7 @@ export default function MarksEntryPage() {
                               value={getSubjectMark(pupil.id, subject)}
                               onChange={(e) => handleMarksChange(pupil.id, subject, e.target.value)}
                               className="w-20"
+                              disabled={isSaving}
                             />
                           </TableCell>
                         ))}
@@ -120,7 +182,16 @@ export default function MarksEntryPage() {
                   </TableBody>
                 </Table>
                 <div className="mt-6 flex justify-end">
-                  <Button onClick={handleSaveMarks}>Save Marks</Button>
+                  <Button onClick={handleSaveMarks} disabled={isSaving || Object.keys(marksState).length === 0}>
+                    {isSaving ? (
+                      <>
+                        <LoadingSpinner className="mr-2 h-4 w-4" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Marks"
+                    )}
+                  </Button>
                 </div>
               </>
             ) : (
