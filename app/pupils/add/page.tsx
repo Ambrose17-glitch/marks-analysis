@@ -11,13 +11,11 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { usePupilData, type Pupil, type Subject } from "@/lib/pupil-data-provider"
 import { useToast } from "@/components/ui/use-toast"
-import { LoadingSpinner } from "@/components/loading-spinner"
 
 export default function AddPupilPage() {
   const router = useRouter()
-  const { addPupil, getGrade, loading } = usePupilData()
+  const { addPupil, getGrade } = usePupilData()
   const { toast } = useToast()
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [name, setName] = useState("")
   const [className, setClassName] = useState<string>("")
@@ -51,7 +49,7 @@ export default function AddPupilPage() {
     }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!name.trim()) {
@@ -72,44 +70,31 @@ export default function AddPupilPage() {
       return
     }
 
-    setIsSubmitting(true)
+    // Convert marks to the required format
+    const formattedMarks = Object.entries(marks).map(([subject, data]) => {
+      const { grade, points } = getGrade(data.marks)
+      return {
+        subject: subject as Subject,
+        marks: data.marks,
+        grade,
+        points,
+        teacherName: data.teacherName || undefined,
+      }
+    })
 
-    try {
-      // Convert marks to the required format
-      const formattedMarks = Object.entries(marks).map(([subject, data]) => {
-        return {
-          subject: subject as Subject,
-          marks: data.marks,
-          teacherName: data.teacherName || undefined,
-        }
-      })
+    // Add the new pupil
+    addPupil({
+      name,
+      class: className as Pupil["class"],
+      marks: formattedMarks,
+    })
 
-      // Add the new pupil
-      await addPupil({
-        name,
-        class: className as Pupil["class"],
-        marks: formattedMarks,
-      })
+    toast({
+      title: "Success",
+      description: `${name} has been added to ${className}`,
+    })
 
-      router.push("/pupils")
-    } catch (error) {
-      console.error("Error adding pupil:", error)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  if (loading && !isSubmitting) {
-    return (
-      <div className="container py-8">
-        <h1 className="text-3xl font-bold mb-6">Add New Pupil</h1>
-        <Card>
-          <CardContent className="py-10">
-            <LoadingSpinner />
-          </CardContent>
-        </Card>
-      </div>
-    )
+    router.push("/pupils")
   }
 
   return (
@@ -132,13 +117,12 @@ export default function AddPupilPage() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Enter full name"
                   required
-                  disabled={isSubmitting}
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="class">Class</Label>
-                <Select value={className} onValueChange={setClassName} disabled={isSubmitting}>
+                <Select value={className} onValueChange={setClassName}>
                   <SelectTrigger id="class">
                     <SelectValue placeholder="Select class" />
                   </SelectTrigger>
@@ -174,7 +158,6 @@ export default function AddPupilPage() {
                         max="100"
                         value={marks[subject].marks}
                         onChange={(e) => handleMarksChange(subject, e.target.value)}
-                        disabled={isSubmitting}
                       />
                     </div>
 
@@ -185,7 +168,6 @@ export default function AddPupilPage() {
                         value={marks[subject].teacherName}
                         onChange={(e) => handleTeacherChange(subject, e.target.value)}
                         placeholder="Enter teacher name"
-                        disabled={isSubmitting}
                       />
                     </div>
                   </div>
@@ -194,19 +176,10 @@ export default function AddPupilPage() {
             </div>
           </CardContent>
           <CardFooter className="flex justify-between">
-            <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
+            <Button type="button" variant="outline" onClick={() => router.back()}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <LoadingSpinner className="mr-2 h-4 w-4" />
-                  Saving...
-                </>
-              ) : (
-                "Save Pupil"
-              )}
-            </Button>
+            <Button type="submit">Save Pupil</Button>
           </CardFooter>
         </Card>
       </form>

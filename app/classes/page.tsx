@@ -5,10 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { usePupilData } from "@/lib/pupil-data-provider"
 import { Users, FileText } from "lucide-react"
-import { useEffect } from "react"
 
 export default function ClassesPage() {
-  const { pupils, calculateResults } = usePupilData()
+  const { pupils } = usePupilData()
 
   // Count pupils per class
   const classCounts = {
@@ -43,26 +42,6 @@ export default function ClassesPage() {
       },
     }
   })
-
-  // Add auto-calculation for all classes
-  useEffect(() => {
-    const classesNeedingCalculation = ["P.4", "P.5", "P.6", "P.7"].filter((className) => {
-      const classPupils = pupils.filter((pupil) => pupil.class === className)
-      return classPupils.some(
-        (pupil) =>
-          pupil.marks.length > 0 &&
-          (pupil.totalMarks === undefined ||
-            pupil.totalAggregate === undefined ||
-            pupil.division === undefined ||
-            pupil.position === undefined),
-      )
-    })
-
-    // Calculate results for classes that need it
-    classesNeedingCalculation.forEach((className) => {
-      calculateResults(className)
-    })
-  }, [pupils, calculateResults])
 
   return (
     <div className="container py-8">

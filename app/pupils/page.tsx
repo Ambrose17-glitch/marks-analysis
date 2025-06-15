@@ -7,50 +7,36 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { usePupilData } from "@/lib/pupil-data-provider"
-import { PlusCircle, Pencil, Trash2, RefreshCw } from "lucide-react"
+import { PlusCircle, Pencil, Trash2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import { LoadingSpinner } from "@/components/loading-spinner"
 
 export default function PupilsPage() {
-  const { pupils, deletePupil, loading, refreshPupils } = usePupilData()
+  const { pupils, deletePupil } = usePupilData()
   const [selectedClass, setSelectedClass] = useState<string>("all")
   const { toast } = useToast()
-  const [isRefreshing, setIsRefreshing] = useState(false)
 
   const filteredPupils = selectedClass === "all" ? pupils : pupils.filter((pupil) => pupil.class === selectedClass)
 
-  const handleDeletePupil = async (id: string, name: string) => {
+  const handleDeletePupil = (id: string, name: string) => {
     if (window.confirm(`Are you sure you want to delete ${name}?`)) {
-      await deletePupil(id)
+      deletePupil(id)
+      toast({
+        title: "Pupil deleted",
+        description: `${name} has been removed from the system.`,
+      })
     }
-  }
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true)
-    await refreshPupils()
-    setIsRefreshing(false)
-    toast({
-      title: "Data refreshed",
-      description: "The pupil data has been refreshed from the database.",
-    })
   }
 
   return (
     <div className="container py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Pupils Management</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-            Refresh
+        <Link href="/pupils/add">
+          <Button>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add New Pupil
           </Button>
-          <Link href="/pupils/add">
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add New Pupil
-            </Button>
-          </Link>
-        </div>
+        </Link>
       </div>
 
       <Card>
@@ -74,9 +60,7 @@ export default function PupilsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <LoadingSpinner className="py-8" />
-          ) : filteredPupils.length > 0 ? (
+          {filteredPupils.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>

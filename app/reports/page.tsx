@@ -1,64 +1,25 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { usePupilData } from "@/lib/pupil-data-provider"
-import { FileText, BarChart3, Users, RefreshCw } from "lucide-react"
-import { LoadingSpinner } from "@/components/loading-spinner"
-import { useToast } from "@/components/ui/use-toast"
-import { PupilPerformanceTable } from "@/components/pupil-performance-table"
-import { ClassPerformanceSummary } from "@/components/class-performance-summary"
+import { FileText, BarChart3, Users } from "lucide-react"
 
 export default function ReportsPage() {
-  const { pupils, calculateResults, loading, refreshPupils } = usePupilData()
+  const { pupils, calculateResults } = usePupilData()
   const [selectedClass, setSelectedClass] = useState<string>("")
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const { toast } = useToast()
+
+  const handleGenerateReports = () => {
+    if (selectedClass) {
+      calculateResults(selectedClass)
+    }
+  }
 
   const classPupils = selectedClass ? pupils.filter((pupil) => pupil.class === selectedClass) : []
-
-  const handleGenerateReports = async () => {
-    if (selectedClass) {
-      setIsGenerating(true)
-      await calculateResults(selectedClass)
-      setIsGenerating(false)
-      toast({
-        title: "Reports Generated",
-        description: `Performance reports for ${selectedClass} have been generated successfully.`,
-      })
-    }
-  }
-
-  // Auto-calculate results when class is selected
-  useEffect(() => {
-    if (selectedClass && classPupils.length > 0) {
-      const needsCalculation = classPupils.some(
-        (pupil) =>
-          pupil.totalMarks === undefined ||
-          pupil.totalAggregate === undefined ||
-          pupil.division === undefined ||
-          pupil.position === undefined,
-      )
-
-      if (needsCalculation) {
-        calculateResults(selectedClass)
-      }
-    }
-  }, [selectedClass, classPupils])
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true)
-    await refreshPupils()
-    setIsRefreshing(false)
-    toast({
-      title: "Data refreshed",
-      description: "The pupil data has been refreshed from the database.",
-    })
-  }
 
   // Count pupils by division
   const divisionCounts = classPupils.reduce(
@@ -100,20 +61,14 @@ export default function ReportsPage() {
 
   return (
     <div className="container py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Reports</h1>
-        <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
-          <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-          Refresh Data
-        </Button>
-      </div>
+      <h1 className="text-3xl font-bold mb-6">Reports</h1>
 
       <Card className="mb-8">
         <CardHeader>
           <CardTitle>Generate Reports</CardTitle>
           <CardDescription>Select a class to generate performance reports.</CardDescription>
           <div className="flex items-center gap-4">
-            <Select value={selectedClass} onValueChange={setSelectedClass} disabled={isGenerating}>
+            <Select value={selectedClass} onValueChange={setSelectedClass}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select class" />
               </SelectTrigger>
@@ -124,26 +79,15 @@ export default function ReportsPage() {
                 <SelectItem value="P.7">P.7</SelectItem>
               </SelectContent>
             </Select>
-            <Button onClick={handleGenerateReports} disabled={!selectedClass || isGenerating}>
-              {isGenerating ? (
-                <>
-                  <LoadingSpinner className="mr-2 h-4 w-4" />
-                  Generating...
-                </>
-              ) : (
-                "Generate Reports"
-              )}
+            <Button onClick={handleGenerateReports} disabled={!selectedClass}>
+              Generate Reports
             </Button>
           </div>
         </CardHeader>
       </Card>
 
-      {loading ? (
-        <LoadingSpinner className="py-8" />
-      ) : selectedClass && classPupils.length > 0 ? (
+      {selectedClass && classPupils.length > 0 && (
         <>
-          <ClassPerformanceSummary pupils={classPupils} className={selectedClass} />
-
           <div className="grid gap-6 md:grid-cols-3 mb-8">
             <Card>
               <CardHeader className="pb-2">
@@ -239,15 +183,49 @@ export default function ReportsPage() {
               <CardDescription>Pupils ranked by performance in {selectedClass}</CardDescription>
             </CardHeader>
             <CardContent>
-              <PupilPerformanceTable pupils={classPupils} />
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Position</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Total Marks</TableHead>
+                    <TableHead>Aggregate</TableHead>
+                    <TableHead>Division</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[...classPupils]
+                    .sort((a, b) => (a.position || 999) - (b.position || 999))
+                    .map((pupil) => (
+                      <TableRow key={pupil.id}>
+                        <TableCell>{pupil.position || "-"}</TableCell>
+                        <TableCell className="font-medium">{pupil.name}</TableCell>
+                        <TableCell>{pupil.totalMarks || "-"}</TableCell>
+                        <TableCell>{pupil.totalAggregate || "-"}</TableCell>
+                        <TableCell>{pupil.division || "-"}</TableCell>
+                        <TableCell className="text-right">
+                          <Link href={`/reports/pupil/${pupil.id}`}>
+                            <Button variant="outline" size="sm">
+                              <FileText className="h-4 w-4 mr-1" />
+                              Report Card
+                            </Button>
+                          </Link>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </>
-      ) : selectedClass && classPupils.length === 0 ? (
+      )}
+
+      {selectedClass && classPupils.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
           No pupils found in {selectedClass}. Please add pupils to this class first.
         </div>
-      ) : null}
+      )}
     </div>
   )
 }

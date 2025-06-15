@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { usePupilData, type Subject } from "@/lib/pupil-data-provider"
 import { ArrowLeft, Printer } from "lucide-react"
-import { PupilPerformanceTable } from "@/components/pupil-performance-table"
 
 export default function ClassReportPage() {
   const router = useRouter()
@@ -16,16 +15,8 @@ export default function ClassReportPage() {
   const className = params.className as string
   const classPupils = pupils.filter((pupil) => pupil.class === className)
 
-  // Ensure all pupils have calculated results - if any don't, recalculate for the whole class
-  const needsCalculation = classPupils.some(
-    (pupil) =>
-      pupil.totalMarks === undefined ||
-      pupil.totalAggregate === undefined ||
-      pupil.division === undefined ||
-      pupil.position === undefined,
-  )
-
-  if (needsCalculation && classPupils.length > 0) {
+  // Calculate results if not already done
+  if (classPupils.some((pupil) => !pupil.position)) {
     calculateResults(className)
   }
 
@@ -169,18 +160,6 @@ export default function ClassReportPage() {
             </div>
           </div>
 
-          <h3 className="font-bold text-lg mb-4">Class Performance</h3>
-          <div className="mb-8">
-            <div className="bg-primary/5 p-4 rounded-md mb-4">
-              <h4 className="font-medium mb-2">Class Ranking</h4>
-              <p className="text-sm text-muted-foreground mb-2">
-                Pupils are ranked by total aggregate (lower is better). In case of a tie, total marks are used as a
-                tiebreaker.
-              </p>
-              <PupilPerformanceTable pupils={classPupils} showActions={false} />
-            </div>
-          </div>
-
           <h3 className="font-bold text-lg mb-4">Subject Performance Breakdown</h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -294,6 +273,39 @@ export default function ClassReportPage() {
             <p>This report was generated on {new Date().toLocaleDateString()}</p>
           </div>
         </CardFooter>
+      </Card>
+
+      <Card className="print:shadow-none print:border-none">
+        <CardHeader>
+          <CardTitle>Class Ranking</CardTitle>
+          <CardDescription>Pupils ranked by performance in {className}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Position</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Total Marks</TableHead>
+                <TableHead>Aggregate</TableHead>
+                <TableHead>Division</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[...classPupils]
+                .sort((a, b) => (a.position || 999) - (b.position || 999))
+                .map((pupil) => (
+                  <TableRow key={pupil.id}>
+                    <TableCell>{pupil.position || "-"}</TableCell>
+                    <TableCell className="font-medium">{pupil.name}</TableCell>
+                    <TableCell>{pupil.totalMarks || "-"}</TableCell>
+                    <TableCell>{pupil.totalAggregate || "-"}</TableCell>
+                    <TableCell>{pupil.division || "-"}</TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </CardContent>
       </Card>
     </div>
   )

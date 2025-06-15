@@ -1,11 +1,12 @@
 "use client"
 
 import { useParams, useRouter } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { usePupilData } from "@/lib/pupil-data-provider"
-import { ArrowLeft } from "lucide-react"
-import { PupilPerformanceTable } from "@/components/pupil-performance-table"
+import { ArrowLeft, FileText } from "lucide-react"
 
 export default function IndividualReportsPage() {
   const router = useRouter()
@@ -37,7 +38,39 @@ export default function IndividualReportsPage() {
         </CardHeader>
         <CardContent>
           {classPupils.length > 0 ? (
-            <PupilPerformanceTable pupils={classPupils} />
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Position</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Total Marks</TableHead>
+                  <TableHead>Aggregate</TableHead>
+                  <TableHead>Division</TableHead>
+                  <TableHead className="text-right">Report Card</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...classPupils]
+                  .sort((a, b) => (a.position || 999) - (b.position || 999))
+                  .map((pupil) => (
+                    <TableRow key={pupil.id}>
+                      <TableCell>{pupil.position || "-"}</TableCell>
+                      <TableCell className="font-medium">{pupil.name}</TableCell>
+                      <TableCell>{pupil.totalMarks || "-"}</TableCell>
+                      <TableCell>{pupil.totalAggregate || "-"}</TableCell>
+                      <TableCell>{pupil.division || "-"}</TableCell>
+                      <TableCell className="text-right">
+                        <Link href={`/reports/pupil/${pupil.id}`}>
+                          <Button variant="outline" size="sm">
+                            <FileText className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
           ) : (
             <div className="text-center py-6 text-muted-foreground">
               No pupils found in {className}. Please add pupils to this class first.
