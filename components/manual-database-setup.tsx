@@ -21,7 +21,7 @@ export function ManualDatabaseSetup({ onContinue }: ManualDatabaseSetupProps) {
   const createTablesSQL = `-- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Create pupils table
+-- Create pupils table (only name and class are stored)
 CREATE TABLE IF NOT EXISTS pupils (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
@@ -63,7 +63,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION create_tables()
 RETURNS void AS $$
 BEGIN
-  -- Create pupils table
+  -- Create pupils table (only name and class are stored)
   CREATE TABLE IF NOT EXISTS pupils (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL,

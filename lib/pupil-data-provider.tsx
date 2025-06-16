@@ -22,6 +22,7 @@ export interface Pupil {
   id: string
   name: string
   class: "P.4" | "P.5" | "P.6" | "P.7"
+  sex: "Male" | "Female"
   marks: SubjectMark[]
   totalMarks?: number
   totalAggregate?: number
@@ -29,8 +30,15 @@ export interface Pupil {
   position?: number
 }
 
+export interface SchoolSettings {
+  academicYear: string
+  currentTerm: string
+  nextTermBegins: string
+}
+
 interface PupilDataContextType {
   pupils: Pupil[]
+  schoolSettings: SchoolSettings
   loading: boolean
   addPupil: (pupil: Omit<Pupil, "id" | "marks"> & { marks: Omit<SubjectMark, "grade" | "points">[] }) => Promise<void>
   updatePupil: (
@@ -43,12 +51,18 @@ interface PupilDataContextType {
   getGrade: (marks: number) => { grade: string; points: number }
   getDivision: (totalAggregate: number) => string
   refreshPupils: () => Promise<void>
+  updateSchoolSettings: (settings: Partial<SchoolSettings>) => Promise<void>
 }
 
 const PupilDataContext = createContext<PupilDataContextType | undefined>(undefined)
 
 export function PupilDataProvider({ children }: { children: React.ReactNode }) {
   const [pupils, setPupils] = useState<Pupil[]>([])
+  const [schoolSettings, setSchoolSettings] = useState<SchoolSettings>({
+    academicYear: "2024/2025",
+    currentTerm: "Term 1",
+    nextTermBegins: "2025-04-28",
+  })
   const [loading, setLoading] = useState(true)
   const [databaseError, setDatabaseError] = useState<boolean>(false)
   const [databaseInitialized, setDatabaseInitialized] = useState<boolean>(true)
@@ -116,6 +130,7 @@ export function PupilDataProvider({ children }: { children: React.ReactNode }) {
           id: pupil.id,
           name: pupil.name,
           class: pupil.class as "P.4" | "P.5" | "P.6" | "P.7",
+          sex: "Male", // Default value since it's not stored in database
           marks: pupilMarks,
           totalMarks: pupilMarks.length > 0 ? totalMarks : undefined,
           totalAggregate: pupilMarks.length > 0 ? totalAggregate : undefined,
@@ -219,7 +234,7 @@ export function PupilDataProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true)
 
-      // Insert the pupil
+      // Insert the pupil with only name and class (sex is not stored in database)
       const { data: newPupil, error: pupilError } = await supabase
         .from("pupils")
         .insert({
@@ -276,7 +291,7 @@ export function PupilDataProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true)
 
-      // Update pupil basic info if provided
+      // Update pupil basic info if provided (only name and class, sex is not stored)
       if (pupilData.name || pupilData.class) {
         const updateData: { name?: string; class?: string } = {}
         if (pupilData.name) updateData.name = pupilData.name
@@ -375,6 +390,12 @@ export function PupilDataProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const updateSchoolSettings = async (settings: Partial<SchoolSettings>) => {
+    setSchoolSettings((prev) => ({ ...prev, ...settings }))
+    // In a real app, you'd save this to the database
+    localStorage.setItem("schoolSettings", JSON.stringify({ ...schoolSettings, ...settings }))
+  }
+
   const getPupilsByClass = (className: string) => {
     return pupils.filter((pupil) => pupil.class === className)
   }
@@ -463,6 +484,7 @@ export function PupilDataProvider({ children }: { children: React.ReactNode }) {
     <PupilDataContext.Provider
       value={{
         pupils,
+        schoolSettings,
         loading,
         addPupil,
         updatePupil,
@@ -472,6 +494,7 @@ export function PupilDataProvider({ children }: { children: React.ReactNode }) {
         getGrade,
         getDivision,
         refreshPupils,
+        updateSchoolSettings,
       }}
     >
       {children}
