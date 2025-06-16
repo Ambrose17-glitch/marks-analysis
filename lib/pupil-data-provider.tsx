@@ -23,6 +23,9 @@ export interface Pupil {
   name: string
   class: "P.4" | "P.5" | "P.6" | "P.7"
   sex: "Male" | "Female"
+  photo?: string
+  academicYear: string
+  academicTerm: string
   marks: SubjectMark[]
   totalMarks?: number
   totalAggregate?: number
@@ -52,6 +55,8 @@ interface PupilDataContextType {
   getDivision: (totalAggregate: number) => string
   refreshPupils: () => Promise<void>
   updateSchoolSettings: (settings: Partial<SchoolSettings>) => Promise<void>
+  getCurrentAcademicYear: () => string
+  getCurrentTerm: () => string
 }
 
 const PupilDataContext = createContext<PupilDataContextType | undefined>(undefined)
@@ -73,6 +78,35 @@ export function PupilDataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     refreshPupils()
   }, [])
+
+  const getCurrentAcademicYear = (): string => {
+    const currentDate = new Date()
+    const currentYear = currentDate.getFullYear()
+    const currentMonth = currentDate.getMonth() + 1 // JavaScript months are 0-indexed
+
+    // Academic year typically starts in February/March
+    if (currentMonth >= 2) {
+      return `${currentYear}/${currentYear + 1}`
+    } else {
+      return `${currentYear - 1}/${currentYear}`
+    }
+  }
+
+  const getCurrentTerm = (): string => {
+    const currentDate = new Date()
+    const currentMonth = currentDate.getMonth() + 1
+
+    // Term 1: February - April
+    // Term 2: May - August
+    // Term 3: September - December
+    if (currentMonth >= 2 && currentMonth <= 4) {
+      return "Term 1"
+    } else if (currentMonth >= 5 && currentMonth <= 8) {
+      return "Term 2"
+    } else {
+      return "Term 3"
+    }
+  }
 
   const refreshPupils = async () => {
     try {
@@ -131,6 +165,9 @@ export function PupilDataProvider({ children }: { children: React.ReactNode }) {
           name: pupil.name,
           class: pupil.class as "P.4" | "P.5" | "P.6" | "P.7",
           sex: "Male", // Default value since it's not stored in database
+          photo: pupil.photo && pupil.photo.trim() !== "" ? pupil.photo : undefined, // Only set if photo exists and is not empty
+          academicYear: pupil.academic_year || getCurrentAcademicYear(),
+          academicTerm: pupil.academic_term || getCurrentTerm(),
           marks: pupilMarks,
           totalMarks: pupilMarks.length > 0 ? totalMarks : undefined,
           totalAggregate: pupilMarks.length > 0 ? totalAggregate : undefined,
@@ -234,17 +271,64 @@ export function PupilDataProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true)
 
-      // Insert the pupil with only name and class (sex is not stored in database)
-      const { data: newPupil, error: pupilError } = await supabase
-        .from("pupils")
-        .insert({
-          name: pupilData.name,
-          class: pupilData.class,
-        })
-        .select()
-        .single()
+      // Check if academic columns exist by trying to insert with them first, then fallback
+      let newPupil
+      try {
+        // Try inserting with all columns including academic year and term
+        const { data, error } = await supabase
+          .from("pupils")
+          .insert({
+            name: pupilData.name,
+            class: pupilData.class,
+            photo: pupilData.photo && pupilData.photo.trim() !== "" ? pupilData.photo : null, // Handle empty photo
+            academic_year: pupilData.academicYear,
+            academic_term: pupilData.academicTerm,
+          })
+          .select()
+          .single()
 
-      if (pupilError) throw pupilError
+        if (error) throw error
+        newPupil = data
+      } catch (error: any) {
+        // If academic columns don't exist, try without them
+        if (error.message.includes("academic_year") || error.message.includes("academic_term")) {
+          console.log("Academic columns don't exist, inserting without them")
+          try {
+            const { data, error: photoError } = await supabase
+              .from("pupils")
+              .insert({
+                name: pupilData.name,
+                class: pupilData.class,
+                photo: pupilData.photo || null,
+              })
+              .select()
+              .single()
+
+            if (photoError) throw photoError
+            newPupil = data
+          } catch (photoError: any) {
+            // If photo column doesn't exist either, insert with just name and class
+            if (photoError.message.includes("photo")) {
+              console.log("Photo column doesn't exist, inserting with basic fields only")
+              const { data, error: basicError } = await supabase
+                .from("pupils")
+                .insert({
+                  name: pupilData.name,
+                  class: pupilData.class,
+                })
+                .select()
+                .single()
+
+              if (basicError) throw basicError
+              newPupil = data
+            } else {
+              throw photoError
+            }
+          }
+        } else {
+          throw error
+        }
+      }
 
       // Insert the marks with grades and points
       const marksToInsert = pupilData.marks.map((mark) => {
@@ -291,15 +375,65 @@ export function PupilDataProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true)
 
-      // Update pupil basic info if provided (only name and class, sex is not stored)
-      if (pupilData.name || pupilData.class) {
-        const updateData: { name?: string; class?: string } = {}
-        if (pupilData.name) updateData.name = pupilData.name
-        if (pupilData.class) updateData.class = pupilData.class
+      // Update pupil basic info if provided
+      if (
+        pupilData.name ||
+        pupilData.class ||
+        pupilData.photo !== undefined ||
+        pupilData.academicYear ||
+        pupilData.academicTerm
+      ) {
+        // Check if academic columns exist by trying to update with them first, then fallback
+        try {
+          const updateData: {
+            name?: string
+            class?: string
+            photo?: string | null
+            academic_year?: string
+            academic_term?: string
+          } = {}
 
-        const { error: pupilError } = await supabase.from("pupils").update(updateData).eq("id", id)
+          if (pupilData.name) updateData.name = pupilData.name
+          if (pupilData.class) updateData.class = pupilData.class
+          if (pupilData.photo !== undefined) updateData.photo = pupilData.photo || null
+          if (pupilData.academicYear) updateData.academic_year = pupilData.academicYear
+          if (pupilData.academicTerm) updateData.academic_term = pupilData.academicTerm
 
-        if (pupilError) throw pupilError
+          const { error: pupilError } = await supabase.from("pupils").update(updateData).eq("id", id)
+
+          if (pupilError) throw pupilError
+        } catch (error: any) {
+          // If academic columns don't exist, update without them
+          if (error.message.includes("academic_year") || error.message.includes("academic_term")) {
+            console.log("Academic columns don't exist, updating without them")
+            try {
+              const updateData: { name?: string; class?: string; photo?: string | null } = {}
+              if (pupilData.name) updateData.name = pupilData.name
+              if (pupilData.class) updateData.class = pupilData.class
+              if (pupilData.photo !== undefined) updateData.photo = pupilData.photo || null
+
+              const { error: photoError } = await supabase.from("pupils").update(updateData).eq("id", id)
+
+              if (photoError) throw photoError
+            } catch (photoError: any) {
+              // If photo column doesn't exist either, update with just name and class
+              if (photoError.message.includes("photo")) {
+                console.log("Photo column doesn't exist, updating basic fields only")
+                const updateData: { name?: string; class?: string } = {}
+                if (pupilData.name) updateData.name = pupilData.name
+                if (pupilData.class) updateData.class = pupilData.class
+
+                const { error: basicError } = await supabase.from("pupils").update(updateData).eq("id", id)
+
+                if (basicError) throw basicError
+              } else {
+                throw photoError
+              }
+            }
+          } else {
+            throw error
+          }
+        }
       }
 
       // Update marks if provided
@@ -495,6 +629,8 @@ export function PupilDataProvider({ children }: { children: React.ReactNode }) {
         getDivision,
         refreshPupils,
         updateSchoolSettings,
+        getCurrentAcademicYear,
+        getCurrentTerm,
       }}
     >
       {children}

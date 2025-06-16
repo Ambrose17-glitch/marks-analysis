@@ -15,19 +15,33 @@ import { LoadingSpinner } from "@/components/loading-spinner"
 
 export default function AddPupilPage() {
   const router = useRouter()
-  const { addPupil, getGrade, loading } = usePupilData()
+  const { addPupil, getGrade, loading, getCurrentAcademicYear, getCurrentTerm } = usePupilData()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [name, setName] = useState("")
   const [className, setClassName] = useState<string>("")
   const [sex, setSex] = useState<string>("Male") // Keep for UI but don't store in database
+  const [academicYear, setAcademicYear] = useState<string>(getCurrentAcademicYear())
+  const [academicTerm, setAcademicTerm] = useState<string>(getCurrentTerm())
   const [marks, setMarks] = useState<Record<Subject, { marks: number; teacherName: string }>>({
     MTC: { marks: 0, teacherName: "" },
     ENG: { marks: 0, teacherName: "" },
     SCIE: { marks: 0, teacherName: "" },
     SST: { marks: 0, teacherName: "" },
   })
+  const [photo, setPhoto] = useState<string>("")
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setPhoto(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
 
   const handleNameChange = (value: string) => {
     // Convert to uppercase
@@ -90,11 +104,14 @@ export default function AddPupilPage() {
         }
       })
 
-      // Add the new pupil (sex is kept in UI but not stored in database)
+      // Add the new pupil
       await addPupil({
         name,
         class: className as Pupil["class"],
         sex: sex as "Male" | "Female", // This will be ignored by the database operation
+        photo: photo && photo.trim() !== "" ? photo : undefined, // Only set photo if it exists and is not empty
+        academicYear,
+        academicTerm,
         marks: formattedMarks,
       })
 
@@ -180,6 +197,68 @@ export default function AddPupilPage() {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="academicYear" className="uppercase">
+                  ACADEMIC YEAR
+                </Label>
+                <Input
+                  id="academicYear"
+                  value={academicYear}
+                  onChange={(e) => setAcademicYear(e.target.value.toUpperCase())}
+                  placeholder="2024/2025"
+                  required
+                  disabled={isSubmitting}
+                  className="uppercase"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="academicTerm" className="uppercase">
+                  ACADEMIC TERM
+                </Label>
+                <Select value={academicTerm} onValueChange={setAcademicTerm} disabled={isSubmitting}>
+                  <SelectTrigger id="academicTerm">
+                    <SelectValue placeholder="SELECT TERM" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Term 1">TERM 1</SelectItem>
+                    <SelectItem value="Term 2">TERM 2</SelectItem>
+                    <SelectItem value="Term 3">TERM 3</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="photo" className="uppercase">
+                  PUPIL PHOTO (OPTIONAL)
+                </Label>
+                <Input id="photo" type="file" accept="image/*" onChange={handlePhotoChange} disabled={isSubmitting} />
+                <p className="text-xs text-muted-foreground uppercase">
+                  NOTE: PHOTO IS OPTIONAL AND WILL APPEAR ON REPORT CARDS IF PROVIDED
+                </p>
+                {photo && (
+                  <div className="mt-2">
+                    <img
+                      src={photo || "/placeholder.svg"}
+                      alt="Preview"
+                      className="w-20 h-20 object-cover border rounded"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => setPhoto("")}
+                      disabled={isSubmitting}
+                    >
+                      REMOVE PHOTO
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div>
               <h3 className="text-lg font-medium mb-4 uppercase">SUBJECT MARKS</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -205,6 +284,7 @@ export default function AddPupilPage() {
                         value={marks[subject].marks}
                         onChange={(e) => handleMarksChange(subject, e.target.value)}
                         disabled={isSubmitting}
+                        className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                       />
                     </div>
 

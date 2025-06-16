@@ -21,11 +21,14 @@ export function ManualDatabaseSetup({ onContinue }: ManualDatabaseSetupProps) {
   const createTablesSQL = `-- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Create pupils table (only name and class are stored)
+-- Create pupils table (name, class, photo, academic_year, and academic_term are stored)
 CREATE TABLE IF NOT EXISTS pupils (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   class TEXT NOT NULL,
+  photo TEXT,
+  academic_year TEXT,
+  academic_term TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -63,11 +66,14 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION create_tables()
 RETURNS void AS $$
 BEGIN
-  -- Create pupils table (only name and class are stored)
+  -- Create pupils table (name, class, photo, academic_year, and academic_term are stored)
   CREATE TABLE IF NOT EXISTS pupils (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL,
     class TEXT NOT NULL,
+    photo TEXT,
+    academic_year TEXT,
+    academic_term TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
   );
 

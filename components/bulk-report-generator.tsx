@@ -41,6 +41,31 @@ export function BulkReportGenerator({ className }: BulkReportGeneratorProps) {
     }
   }
 
+  const getRemarkFromGrade = (grade: string) => {
+    switch (grade) {
+      case "D1":
+        return "EXCELLENT"
+      case "D2":
+        return "VERY GOOD"
+      case "C3":
+        return "GOOD"
+      case "C4":
+        return "SATISFACTORY"
+      case "C5":
+        return "FAIR"
+      case "C6":
+        return "PASS"
+      case "P7":
+        return "WEAK PASS"
+      case "P8":
+        return "POOR"
+      case "F9":
+        return "FAIL"
+      default:
+        return "-"
+    }
+  }
+
   return (
     <div className="hidden print:hidden">
       {classPupils.map((pupil, index) => (
@@ -52,20 +77,69 @@ export function BulkReportGenerator({ className }: BulkReportGeneratorProps) {
         >
           <Card className="shadow-none border-none bg-white h-full">
             <CardHeader className="pb-2">
-              <SchoolHeader title="PUPIL REPORT CARD" className="border-b-2 border-black" />
+              {/* School Header with Photo on the Right */}
+              <div className="relative">
+                <SchoolHeader title="PUPIL REPORT CARD" className="border-b-2 border-black" />
+
+                {/* Pupil Photo positioned on the right side - Only if photo exists */}
+                {pupil.photo && pupil.photo.trim() !== "" && (
+                  <div className="absolute top-6 right-2 z-20">
+                    <div className="bg-white border-2 border-gray-600 p-1">
+                      <img
+                        src={pupil.photo || "/placeholder.svg"}
+                        alt={`${pupil.name} photo`}
+                        className="w-16 h-16 object-cover"
+                        onError={(e) => {
+                          console.log(
+                            "Image failed to load for bulk report, removing from DOM:",
+                            pupil.photo?.substring(0, 50),
+                          )
+                          // Completely remove the image element from DOM
+                          const imgElement = e.currentTarget
+                          const parentDiv = imgElement.closest(".absolute")
+                          if (parentDiv) {
+                            parentDiv.remove()
+                          } else {
+                            imgElement.remove()
+                          }
+                        }}
+                        onLoad={(e) => {
+                          // Validate image after loading
+                          const img = e.currentTarget
+                          if (img.naturalWidth === 0 || img.naturalHeight === 0) {
+                            console.log("Image has no dimensions, removing from DOM:", pupil.photo?.substring(0, 50))
+                            const parentDiv = img.closest(".absolute")
+                            if (parentDiv) {
+                              parentDiv.remove()
+                            } else {
+                              img.remove()
+                            }
+                          }
+                        }}
+                        style={{
+                          // Ensure image doesn't cause layout issues
+                          maxWidth: "64px",
+                          maxHeight: "64px",
+                          objectFit: "cover",
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardHeader>
 
             <CardContent className="pt-1 text-xs">
               {/* Academic Information */}
-              <div className="grid grid-cols-2 gap-2 mb-3 p-2 border border-gray-400">
+              <div className="grid grid-cols-2 gap-2 mb-3 p-2 bg-gray-100 border border-gray-400">
                 <div className="space-y-1">
                   <div>
                     <span className="font-semibold text-gray-700 text-xs uppercase">ACADEMIC YEAR:</span>
-                    <span className="ml-1 font-bold text-xs uppercase">{schoolSettings.academicYear}</span>
+                    <span className="ml-1 font-bold text-xs uppercase">{pupil.academicYear}</span>
                   </div>
                   <div>
                     <span className="font-semibold text-gray-700 text-xs uppercase">TERM:</span>
-                    <span className="ml-1 font-bold text-xs uppercase">{schoolSettings.currentTerm}</span>
+                    <span className="ml-1 font-bold text-xs uppercase">{pupil.academicTerm}</span>
                   </div>
                 </div>
                 <div className="space-y-1">
@@ -83,7 +157,7 @@ export function BulkReportGenerator({ className }: BulkReportGeneratorProps) {
               </div>
 
               {/* Pupil Information */}
-              <div className="grid grid-cols-2 gap-2 mb-3 p-2 border-2 border-gray-300">
+              <div className="grid grid-cols-2 gap-2 mb-3 p-2 border-2 border-gray-300 bg-gray-50">
                 <div className="space-y-1">
                   <div>
                     <span className="font-semibold text-gray-700 text-xs uppercase">PUPIL NAME:</span>
@@ -108,7 +182,9 @@ export function BulkReportGenerator({ className }: BulkReportGeneratorProps) {
 
               {/* Subjects Table */}
               <div className="mb-3">
-                <h3 className="text-sm font-bold mb-1 text-center uppercase">ACADEMIC PERFORMANCE</h3>
+                <h3 className="text-sm font-bold mb-1 text-center uppercase bg-gray-800 text-white py-1">
+                  ACADEMIC PERFORMANCE
+                </h3>
                 <Table className="border-2 border-gray-800 text-xs">
                   <TableHeader>
                     <TableRow className="bg-gray-200">
@@ -122,13 +198,19 @@ export function BulkReportGenerator({ className }: BulkReportGeneratorProps) {
                         GRADE
                       </TableHead>
                       <TableHead className="text-center font-bold border border-gray-400 py-1 px-2 text-xs uppercase">
+                        REMARKS
+                      </TableHead>
+                      <TableHead className="text-center font-bold border border-gray-400 py-1 px-2 text-xs uppercase">
                         TEACHER
                       </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pupil.marks.map((mark) => (
-                      <TableRow key={mark.subject} className="border border-gray-400">
+                    {pupil.marks.map((mark, markIndex) => (
+                      <TableRow
+                        key={mark.subject}
+                        className={`border border-gray-400 ${markIndex % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+                      >
                         <TableCell className="font-medium text-center border border-gray-400 py-1 px-2 text-xs uppercase">
                           {mark.subject === "MTC" && "MATHEMATICS"}
                           {mark.subject === "ENG" && "ENGLISH"}
@@ -142,6 +224,9 @@ export function BulkReportGenerator({ className }: BulkReportGeneratorProps) {
                           {mark.grade}
                         </TableCell>
                         <TableCell className="text-center border border-gray-400 py-1 px-2 text-xs uppercase">
+                          {getRemarkFromGrade(mark.grade)}
+                        </TableCell>
+                        <TableCell className="text-center border border-gray-400 py-1 px-2 text-xs uppercase">
                           {mark.teacherName || "-"}
                         </TableCell>
                       </TableRow>
@@ -150,36 +235,28 @@ export function BulkReportGenerator({ className }: BulkReportGeneratorProps) {
                 </Table>
               </div>
 
-              {/* Performance Summary */}
-              <div className="grid grid-cols-2 gap-4 mb-3 p-2 border-2 border-gray-400">
-                <div className="space-y-2">
+              {/* Performance Summary - Single Line */}
+              <div className="mb-3 p-2 border-2 border-gray-400 bg-gray-100">
+                <div className="flex justify-center items-center gap-6 text-xs">
                   <div className="text-center">
                     <span className="font-semibold text-gray-700 block text-xs uppercase">TOTAL MARKS:</span>
-                    <span className="text-lg font-bold text-blue-600">{pupil.totalMarks || "NOT CALCULATED"}</span>
+                    <span className="text-lg font-bold">{pupil.totalMarks || "NOT CALCULATED"}</span>
                   </div>
                   <div className="text-center">
                     <span className="font-semibold text-gray-700 block text-xs uppercase">TOTAL AGGREGATE:</span>
-                    <span className="text-lg font-bold text-green-600">{pupil.totalAggregate || "NOT CALCULATED"}</span>
+                    <span className="text-lg font-bold">{pupil.totalAggregate || "NOT CALCULATED"}</span>
                   </div>
-                </div>
-                <div className="space-y-2">
                   <div className="text-center">
                     <span className="font-semibold text-gray-700 block text-xs uppercase">DIVISION:</span>
-                    <span className="text-lg font-bold text-purple-600 uppercase">
-                      {pupil.division || "NOT CALCULATED"}
-                    </span>
-                  </div>
-                  <div className="text-center">
-                    <span className="font-semibold text-gray-700 block text-xs uppercase">POSITION IN CLASS:</span>
-                    <span className="text-lg font-bold text-orange-600">{pupil.position || "NOT CALCULATED"}</span>
+                    <span className="text-lg font-bold uppercase">{pupil.division || "NOT CALCULATED"}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Teacher's Comments */}
-              <div className="mb-3 p-2 border-2 border-gray-400">
-                <h3 className="font-bold mb-1 text-center text-xs uppercase">TEACHER'S COMMENTS</h3>
-                <div className="min-h-[40px] p-2 border border-gray-300 rounded">
+              {/* Class Teacher's Comments */}
+              <div className="mb-2 p-2 border-2 border-gray-400 bg-gray-50">
+                <h3 className="font-bold mb-1 text-center text-xs uppercase">CLASS TEACHER'S COMMENTS</h3>
+                <div className="min-h-[30px] p-2 border border-gray-300 bg-white">
                   <p className="text-xs leading-relaxed uppercase">
                     {getPersonalizedComment(pupil.division, pupil.name)}
                   </p>
@@ -193,7 +270,8 @@ export function BulkReportGenerator({ className }: BulkReportGeneratorProps) {
             </CardContent>
 
             <CardFooter className="flex-col items-start border-t-2 border-gray-800 pt-2 text-xs">
-              <div className="w-full grid grid-cols-3 gap-4 mb-2">
+              {/* Both Signatures on Same Line */}
+              <div className="w-full grid grid-cols-2 gap-4 mb-2">
                 <div className="text-center">
                   <p className="font-semibold text-gray-700 mb-1 text-xs uppercase">CLASS TEACHER</p>
                   <div className="border-b-2 border-dashed border-gray-400 h-6 mb-1"></div>
@@ -204,25 +282,10 @@ export function BulkReportGenerator({ className }: BulkReportGeneratorProps) {
                   <div className="border-b-2 border-dashed border-gray-400 h-6 mb-1"></div>
                   <p className="text-xs text-gray-600 uppercase">SIGNATURE & DATE</p>
                 </div>
-                <div className="text-center">
-                  <p className="font-semibold text-gray-700 mb-1 text-xs uppercase">PARENT/GUARDIAN</p>
-                  <div className="border-b-2 border-dashed border-gray-400 h-6 mb-1"></div>
-                  <p className="text-xs text-gray-600 uppercase">SIGNATURE & DATE</p>
-                </div>
               </div>
 
               <div className="w-full text-center text-xs text-gray-600 border-t border-gray-300 pt-2">
-                <p className="font-semibold uppercase">
-                  THIS REPORT WAS GENERATED ON{" "}
-                  {new Date().toLocaleDateString("en-GB", {
-                    day: "2-digit",
-                    month: "long",
-                    year: "numeric",
-                  })}
-                </p>
-                <p className="mt-1 italic uppercase">
-                  "EDUCATION IS THE MOST POWERFUL WEAPON WHICH YOU CAN USE TO CHANGE THE WORLD" - NELSON MANDELA
-                </p>
+                <p className="font-bold uppercase text-sm">"WITH GOD WE EXCEL"</p>
               </div>
             </CardFooter>
           </Card>

@@ -33,16 +33,55 @@ export default function ClassReportPage() {
     calculateResults(className)
   }
 
+  // Count grades per subject with student counts
+  const gradeCountsBySubject: Record<Subject, Record<string, number>> = {
+    MTC: {},
+    ENG: {},
+    SCIE: {},
+    SST: {},
+  }
+
+  classPupils.forEach((pupil) => {
+    pupil.marks.forEach((mark) => {
+      if (!gradeCountsBySubject[mark.subject][mark.grade]) {
+        gradeCountsBySubject[mark.subject][mark.grade] = 0
+      }
+      gradeCountsBySubject[mark.subject][mark.grade]++
+    })
+  })
+
   const handleDownloadBulkPDF = async () => {
     if (classPupils.length === 0) return
 
     setIsGeneratingPDF(true)
+    const elementIds = classPupils.map((pupil) => `pupil-report-${pupil.id}`)
+
     try {
-      const elementIds = classPupils.map((pupil) => `pupil-report-${pupil.id}`)
-      await generateBulkPDF(elementIds, `${className.replace(".", "")}_Class_Reports.pdf`)
+      const result = await generateBulkPDF(elementIds, `${className.replace(".", "")}_Class_Reports.pdf`)
+
+      // Show detailed success message
+      if (result.errorCount > 0) {
+        alert(
+          `PDF generated with some issues:\n✅ ${result.successCount} reports successful\n⚠️ ${result.errorCount} reports had issues\n\nThe PDF has been downloaded with all successful reports.`,
+        )
+      } else {
+        alert(`✅ PDF generated successfully! All ${result.successCount} reports included.`)
+      }
     } catch (error) {
       console.error("Error generating bulk PDF:", error)
-      alert("Error generating PDF. Please try again.")
+
+      // More specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes("No valid elements")) {
+          alert(
+            "❌ Error: Could not generate any reports. This might be due to:\n• Corrupted pupil photos\n• Missing pupil data\n• Browser compatibility issues\n\nTry removing pupil photos or contact support.",
+          )
+        } else {
+          alert(`❌ Error generating PDF: ${error.message}\n\nTry refreshing the page and attempting again.`)
+        }
+      } else {
+        alert("❌ An unexpected error occurred while generating the PDF. Please refresh the page and try again.")
+      }
     } finally {
       setIsGeneratingPDF(false)
     }
@@ -331,6 +370,104 @@ export default function ClassReportPage() {
                   </TableRow>
                 </TableBody>
               </Table>
+            </div>
+          </div>
+
+          {/* Grade Distribution */}
+          <div className="mb-8">
+            <h3 className="font-bold text-lg mb-4 uppercase">GRADE DISTRIBUTION</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="font-medium mb-2 uppercase">MATHEMATICS (MTC)</h4>
+                <Table className="border">
+                  <TableHeader>
+                    <TableRow className="bg-gray-100">
+                      <TableHead className="font-semibold uppercase text-xs">GRADE</TableHead>
+                      <TableHead className="font-semibold uppercase text-xs text-center">COUNT</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {["D1", "D2", "C3", "C4", "C5", "C6", "P7", "P8", "F9"].map((grade) => {
+                      const count = gradeCountsBySubject.MTC[grade] || 0
+                      return (
+                        <TableRow key={`MTC-${grade}`}>
+                          <TableCell className="font-medium">{grade}</TableCell>
+                          <TableCell className="text-center font-bold">{count}</TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div>
+                <h4 className="font-medium mb-2 uppercase">ENGLISH (ENG)</h4>
+                <Table className="border">
+                  <TableHeader>
+                    <TableRow className="bg-gray-100">
+                      <TableHead className="font-semibold uppercase text-xs">GRADE</TableHead>
+                      <TableHead className="font-semibold uppercase text-xs text-center">COUNT</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {["D1", "D2", "C3", "C4", "C5", "C6", "P7", "P8", "F9"].map((grade) => {
+                      const count = gradeCountsBySubject.ENG[grade] || 0
+                      return (
+                        <TableRow key={`ENG-${grade}`}>
+                          <TableCell className="font-medium">{grade}</TableCell>
+                          <TableCell className="text-center font-bold">{count}</TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div>
+                <h4 className="font-medium mb-2 uppercase">SCIENCE (SCIE)</h4>
+                <Table className="border">
+                  <TableHeader>
+                    <TableRow className="bg-gray-100">
+                      <TableHead className="font-semibold uppercase text-xs">GRADE</TableHead>
+                      <TableHead className="font-semibold uppercase text-xs text-center">COUNT</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {["D1", "D2", "C3", "C4", "C5", "C6", "P7", "P8", "F9"].map((grade) => {
+                      const count = gradeCountsBySubject.SCIE[grade] || 0
+                      return (
+                        <TableRow key={`SCIE-${grade}`}>
+                          <TableCell className="font-medium">{grade}</TableCell>
+                          <TableCell className="text-center font-bold">{count}</TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div>
+                <h4 className="font-medium mb-2 uppercase">SOCIAL STUDIES (SST)</h4>
+                <Table className="border">
+                  <TableHeader>
+                    <TableRow className="bg-gray-100">
+                      <TableHead className="font-semibold uppercase text-xs">GRADE</TableHead>
+                      <TableHead className="font-semibold uppercase text-xs text-center">COUNT</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {["D1", "D2", "C3", "C4", "C5", "C6", "P7", "P8", "F9"].map((grade) => {
+                      const count = gradeCountsBySubject.SST[grade] || 0
+                      return (
+                        <TableRow key={`SST-${grade}`}>
+                          <TableCell className="font-medium">{grade}</TableCell>
+                          <TableCell className="text-center font-bold">{count}</TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           </div>
         </CardContent>

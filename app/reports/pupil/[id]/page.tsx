@@ -80,6 +80,31 @@ export default function PupilReportPage() {
     }
   }
 
+  const getRemarkFromGrade = (grade: string) => {
+    switch (grade) {
+      case "D1":
+        return "EXCELLENT"
+      case "D2":
+        return "VERY GOOD"
+      case "C3":
+        return "GOOD"
+      case "C4":
+        return "SATISFACTORY"
+      case "C5":
+        return "FAIR"
+      case "C6":
+        return "PASS"
+      case "P7":
+        return "WEAK PASS"
+      case "P8":
+        return "POOR"
+      case "F9":
+        return "FAIL"
+      default:
+        return "-"
+    }
+  }
+
   return (
     <div className="container py-4 print:py-0 print:text-black print:max-w-none">
       <div className="flex justify-between items-center mb-4 print:hidden">
@@ -104,94 +129,147 @@ export default function PupilReportPage() {
       <div className="print:w-[210mm] print:min-h-[297mm] print:max-w-[210mm] print:mx-auto bg-white print:p-[10mm] print:box-border mx-auto max-w-4xl">
         <Card id="pupil-report-content" className="print:shadow-none print:border-none bg-white relative">
           <CardHeader className="pb-2 print:pb-1">
-            <SchoolHeader title="PUPIL REPORT CARD" className="print:border-b-2 print:border-black" />
+            {/* School Header with Photo on the Right */}
+            <div className="relative">
+              <SchoolHeader title="PUPIL REPORT CARD" className="print:border-b-2 print:border-black" />
+
+              {/* Pupil Photo positioned on the right side - Only if photo exists */}
+              {pupil.photo && pupil.photo.trim() !== "" && (
+                <div className="absolute top-8 right-4 print:top-6 print:right-2 z-20">
+                  <div className="bg-white border-2 border-blue-600 p-1 shadow-lg">
+                    <img
+                      src={pupil.photo || "/placeholder.svg"}
+                      alt={`${pupil.name} photo`}
+                      className="w-20 h-20 print:w-16 print:h-16 object-cover"
+                      onError={(e) => {
+                        console.log("Image failed to load:", pupil.photo)
+                        e.currentTarget.style.display = "none"
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </CardHeader>
 
           <CardContent className="pt-2 relative z-10 print:pt-1 print:text-sm">
             {/* Academic Information */}
-            <div className="grid grid-cols-2 gap-3 mb-3 p-2 bg-gray-50 print:bg-white print:border print:border-gray-400">
+            <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 print:bg-gray-100 border-2 border-blue-200 print:border-gray-400 rounded-lg print:rounded-none">
               <div className="space-y-1">
                 <div>
-                  <span className="font-semibold text-gray-700 text-sm uppercase">ACADEMIC YEAR:</span>
-                  <span className="ml-2 font-bold text-sm uppercase">{schoolSettings.academicYear}</span>
+                  <span className="font-semibold text-blue-800 print:text-gray-700 text-sm uppercase">
+                    ACADEMIC YEAR:
+                  </span>
+                  <span className="ml-2 font-bold text-blue-900 print:text-black text-sm uppercase">
+                    {pupil.academicYear}
+                  </span>
                 </div>
                 <div>
-                  <span className="font-semibold text-gray-700 text-sm uppercase">TERM:</span>
-                  <span className="ml-2 font-bold text-sm uppercase">{schoolSettings.currentTerm}</span>
+                  <span className="font-semibold text-blue-800 print:text-gray-700 text-sm uppercase">TERM:</span>
+                  <span className="ml-2 font-bold text-blue-900 print:text-black text-sm uppercase">
+                    {pupil.academicTerm}
+                  </span>
                 </div>
               </div>
               <div className="space-y-1">
                 <div>
-                  <span className="font-semibold text-gray-700 text-sm uppercase">NEXT TERM BEGINS:</span>
-                  <span className="ml-2 font-bold text-sm uppercase">{formatDate(schoolSettings.nextTermBegins)}</span>
+                  <span className="font-semibold text-blue-800 print:text-gray-700 text-sm uppercase">
+                    NEXT TERM BEGINS:
+                  </span>
+                  <span className="ml-2 font-bold text-blue-900 print:text-black text-sm uppercase">
+                    {formatDate(schoolSettings.nextTermBegins)}
+                  </span>
                 </div>
                 <div>
-                  <span className="font-semibold text-gray-700 text-sm uppercase">REPORT DATE:</span>
-                  <span className="ml-2 font-bold text-sm uppercase">{new Date().toLocaleDateString("en-GB")}</span>
+                  <span className="font-semibold text-blue-800 print:text-gray-700 text-sm uppercase">
+                    REPORT DATE:
+                  </span>
+                  <span className="ml-2 font-bold text-blue-900 print:text-black text-sm uppercase">
+                    {new Date().toLocaleDateString("en-GB")}
+                  </span>
                 </div>
               </div>
             </div>
 
             {/* Pupil Information */}
-            <div className="grid grid-cols-2 gap-3 mb-3 p-2 border-2 border-gray-300">
+            <div className="grid grid-cols-2 gap-3 mb-3 p-3 border-2 border-green-300 bg-gradient-to-r from-green-50 to-emerald-50 print:bg-gray-50 print:border-gray-400 rounded-lg print:rounded-none">
               <div className="space-y-1">
                 <div>
-                  <span className="font-semibold text-gray-700 text-sm uppercase">PUPIL NAME:</span>
-                  <span className="ml-2 font-bold text-base uppercase">{pupil.name}</span>
+                  <span className="font-semibold text-green-800 print:text-gray-700 text-sm uppercase">
+                    PUPIL NAME:
+                  </span>
+                  <span className="ml-2 font-bold text-green-900 print:text-black text-base uppercase">
+                    {pupil.name}
+                  </span>
                 </div>
                 <div>
-                  <span className="font-semibold text-gray-700 text-sm uppercase">CLASS:</span>
-                  <span className="ml-2 font-bold text-base uppercase">{pupil.class}</span>
+                  <span className="font-semibold text-green-800 print:text-gray-700 text-sm uppercase">CLASS:</span>
+                  <span className="ml-2 font-bold text-green-900 print:text-black text-base uppercase">
+                    {pupil.class}
+                  </span>
                 </div>
               </div>
               <div className="space-y-1">
                 <div>
-                  <span className="font-semibold text-gray-700 text-sm uppercase">SEX:</span>
-                  <span className="ml-2 font-bold text-sm uppercase">{pupil.sex}</span>
+                  <span className="font-semibold text-green-800 print:text-gray-700 text-sm uppercase">SEX:</span>
+                  <span className="ml-2 font-bold text-green-900 print:text-black text-sm uppercase">{pupil.sex}</span>
                 </div>
                 <div>
-                  <span className="font-semibold text-gray-700 text-sm uppercase">SCHOOL FEES BALANCE:</span>
-                  <span className="ml-2 font-bold text-sm">UGX ________________</span>
+                  <span className="font-semibold text-green-800 print:text-gray-700 text-sm uppercase">
+                    SCHOOL FEES BALANCE:
+                  </span>
+                  <span className="ml-2 font-bold text-green-900 print:text-black text-sm">UGX ________________</span>
                 </div>
               </div>
             </div>
 
             {/* Subjects Table */}
             <div className="mb-3">
-              <h3 className="text-base font-bold mb-2 text-center uppercase">ACADEMIC PERFORMANCE</h3>
-              <Table className="border-2 border-gray-800 text-sm">
+              <h3 className="text-base font-bold mb-2 text-center uppercase bg-gradient-to-r from-purple-600 to-blue-600 text-white py-2 print:bg-gray-800 print:text-white rounded-lg print:rounded-none">
+                ACADEMIC PERFORMANCE
+              </h3>
+              <Table className="border-2 border-purple-300 print:border-gray-800 text-sm rounded-lg print:rounded-none overflow-hidden">
                 <TableHeader>
-                  <TableRow className="bg-gray-200 print:bg-gray-100">
-                    <TableHead className="text-center font-bold border border-gray-400 py-1 px-2 uppercase">
+                  <TableRow className="bg-gradient-to-r from-purple-100 to-blue-100 print:bg-gray-200">
+                    <TableHead className="text-center font-bold border border-purple-200 print:border-gray-400 py-2 px-2 uppercase text-purple-800 print:text-black">
                       SUBJECT
                     </TableHead>
-                    <TableHead className="text-center font-bold border border-gray-400 py-1 px-2 uppercase">
+                    <TableHead className="text-center font-bold border border-purple-200 print:border-gray-400 py-2 px-2 uppercase text-purple-800 print:text-black">
                       MARKS
                     </TableHead>
-                    <TableHead className="text-center font-bold border border-gray-400 py-1 px-2 uppercase">
+                    <TableHead className="text-center font-bold border border-purple-200 print:border-gray-400 py-2 px-2 uppercase text-purple-800 print:text-black">
                       GRADE
                     </TableHead>
-                    <TableHead className="text-center font-bold border border-gray-400 py-1 px-2 uppercase">
+                    <TableHead className="text-center font-bold border border-purple-200 print:border-gray-400 py-2 px-2 uppercase text-purple-800 print:text-black">
+                      REMARKS
+                    </TableHead>
+                    <TableHead className="text-center font-bold border border-purple-200 print:border-gray-400 py-2 px-2 uppercase text-purple-800 print:text-black">
                       TEACHER
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pupil.marks.map((mark) => (
-                    <TableRow key={mark.subject} className="border border-gray-400">
-                      <TableCell className="font-medium text-center border border-gray-400 py-1 px-2 uppercase">
+                  {pupil.marks.map((mark, index) => (
+                    <TableRow
+                      key={mark.subject}
+                      className={`border border-purple-200 print:border-gray-400 ${index % 2 === 0 ? "bg-purple-25 print:bg-white" : "bg-white print:bg-gray-50"}`}
+                    >
+                      <TableCell className="font-medium text-center border border-purple-200 print:border-gray-400 py-2 px-2 uppercase text-purple-900 print:text-black">
                         {mark.subject === "MTC" && "MATHEMATICS"}
                         {mark.subject === "ENG" && "ENGLISH"}
                         {mark.subject === "SCIE" && "SCIENCE"}
                         {mark.subject === "SST" && "SOCIAL STUDIES"}
                       </TableCell>
-                      <TableCell className="text-center font-bold border border-gray-400 py-1 px-2">
+                      <TableCell className="text-center font-bold border border-purple-200 print:border-gray-400 py-2 px-2 text-blue-600 print:text-black">
                         {mark.marks}
                       </TableCell>
-                      <TableCell className="text-center font-bold border border-gray-400 py-1 px-2 uppercase">
+                      <TableCell className="text-center font-bold border border-purple-200 print:border-gray-400 py-2 px-2 uppercase text-green-600 print:text-black">
                         {mark.grade}
                       </TableCell>
-                      <TableCell className="text-center border border-gray-400 py-1 px-2 uppercase">
+                      <TableCell className="text-center border border-purple-200 print:border-gray-400 py-2 px-2 uppercase text-xs text-orange-600 print:text-black">
+                        {getRemarkFromGrade(mark.grade)}
+                      </TableCell>
+                      <TableCell className="text-center border border-purple-200 print:border-gray-400 py-2 px-2 uppercase text-gray-700 print:text-black">
                         {mark.teacherName || "-"}
                       </TableCell>
                     </TableRow>
@@ -200,37 +278,43 @@ export default function PupilReportPage() {
               </Table>
             </div>
 
-            {/* Performance Summary */}
-            <div className="grid grid-cols-2 gap-4 mb-3 p-2 bg-gray-50 print:bg-white print:border-2 print:border-gray-400">
-              <div className="space-y-2">
+            {/* Performance Summary - Single Line with Professional Colors */}
+            <div className="mb-3 p-4 bg-gradient-to-r from-amber-50 via-yellow-50 to-orange-50 print:bg-gray-100 border-2 border-amber-300 print:border-gray-400 rounded-lg print:rounded-none">
+              <div className="flex justify-center items-center gap-8">
                 <div className="text-center">
-                  <span className="font-semibold text-gray-700 block text-sm uppercase">TOTAL MARKS:</span>
-                  <span className="text-lg font-bold text-blue-600">{pupil.totalMarks || "NOT CALCULATED"}</span>
-                </div>
-                <div className="text-center">
-                  <span className="font-semibold text-gray-700 block text-sm uppercase">TOTAL AGGREGATE:</span>
-                  <span className="text-lg font-bold text-green-600">{pupil.totalAggregate || "NOT CALCULATED"}</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="text-center">
-                  <span className="font-semibold text-gray-700 block text-sm uppercase">DIVISION:</span>
-                  <span className="text-lg font-bold text-purple-600 uppercase">
-                    {pupil.division || "NOT CALCULATED"}
+                  <span className="font-semibold text-amber-800 print:text-gray-700 block text-sm uppercase">
+                    TOTAL MARKS:
+                  </span>
+                  <span className="text-xl font-bold text-blue-600 print:text-black">
+                    {pupil.totalMarks || "NOT CALCULATED"}
                   </span>
                 </div>
                 <div className="text-center">
-                  <span className="font-semibold text-gray-700 block text-sm uppercase">POSITION IN CLASS:</span>
-                  <span className="text-lg font-bold text-orange-600">{pupil.position || "NOT CALCULATED"}</span>
+                  <span className="font-semibold text-amber-800 print:text-gray-700 block text-sm uppercase">
+                    TOTAL AGGREGATE:
+                  </span>
+                  <span className="text-xl font-bold text-green-600 print:text-black">
+                    {pupil.totalAggregate || "NOT CALCULATED"}
+                  </span>
+                </div>
+                <div className="text-center">
+                  <span className="font-semibold text-amber-800 print:text-gray-700 block text-sm uppercase">
+                    DIVISION:
+                  </span>
+                  <span className="text-xl font-bold text-purple-600 print:text-black uppercase">
+                    {pupil.division || "NOT CALCULATED"}
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Teacher's Comments */}
-            <div className="mb-3 p-2 border-2 border-gray-400">
-              <h3 className="font-bold mb-2 text-center text-sm uppercase">TEACHER'S COMMENTS</h3>
-              <div className="min-h-[50px] p-2 bg-gray-50 print:bg-white border border-gray-300 rounded">
-                <p className="text-xs leading-relaxed uppercase">
+            {/* Class Teacher's Comments */}
+            <div className="mb-3 p-3 border-2 border-teal-300 bg-gradient-to-r from-teal-50 to-cyan-50 print:bg-gray-50 print:border-gray-400 rounded-lg print:rounded-none">
+              <h3 className="font-bold mb-2 text-center text-sm uppercase text-teal-800 print:text-black">
+                CLASS TEACHER'S COMMENTS
+              </h3>
+              <div className="min-h-[40px] p-3 bg-white print:bg-white border border-teal-200 print:border-gray-300 rounded print:rounded-none">
+                <p className="text-xs leading-relaxed uppercase text-gray-800 print:text-black">
                   {getPersonalizedComment(pupil.division, pupil.name)}
                 </p>
               </div>
@@ -241,7 +325,8 @@ export default function PupilReportPage() {
           </CardContent>
 
           <CardFooter className="flex-col items-start border-t-2 border-gray-800 pt-3 print:pt-2">
-            <div className="w-full grid grid-cols-3 gap-4 mb-3">
+            {/* Both Signatures on Same Line */}
+            <div className="w-full grid grid-cols-2 gap-8 mb-3">
               <div className="text-center">
                 <p className="font-semibold text-gray-700 mb-1 text-xs uppercase">CLASS TEACHER</p>
                 <div className="border-b-2 border-dashed border-gray-400 h-6 mb-1"></div>
@@ -252,24 +337,11 @@ export default function PupilReportPage() {
                 <div className="border-b-2 border-dashed border-gray-400 h-6 mb-1"></div>
                 <p className="text-xs text-gray-600 uppercase">SIGNATURE & DATE</p>
               </div>
-              <div className="text-center">
-                <p className="font-semibold text-gray-700 mb-1 text-xs uppercase">PARENT/GUARDIAN</p>
-                <div className="border-b-2 border-dashed border-gray-400 h-6 mb-1"></div>
-                <p className="text-xs text-gray-600 uppercase">SIGNATURE & DATE</p>
-              </div>
             </div>
 
-            <div className="w-full text-center text-xs text-gray-600 border-t border-gray-300 pt-2">
-              <p className="font-semibold uppercase">
-                THIS REPORT WAS GENERATED ON{" "}
-                {new Date().toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "long",
-                  year: "numeric",
-                })}
-              </p>
-              <p className="mt-1 italic uppercase">
-                "EDUCATION IS THE MOST POWERFUL WEAPON WHICH YOU CAN USE TO CHANGE THE WORLD" - NELSON MANDELA
+            <div className="w-full text-center text-sm text-gray-600 border-t border-gray-300 pt-2">
+              <p className="font-bold uppercase text-lg bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent print:text-black">
+                "WITH GOD WE EXCEL"
               </p>
             </div>
           </CardFooter>
